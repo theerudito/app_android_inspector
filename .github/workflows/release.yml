@@ -53,11 +53,9 @@ jobs:
           APP_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           $version = $env:APP_VERSION.TrimStart('v')
-          $fileVersion = "$version.0"
           $script = Get-Content installer.iss -Raw
-          $script = $script.Replace('#define APP_VERSION "0.1.0"', "#define APP_VERSION `"$version`"")
-          $script = $script.Replace('#define APP_FILE_VERSION "0.1.0.0"', "#define APP_FILE_VERSION `"$fileVersion`"")
-          Set-Content -Path installer.ci.iss -Value $script -NoNewline -Encoding utf8
+          $script = $script.Replace('#define MyAppVersion "0.1.0"', "#define MyAppVersion `"$version`"")
+          Set-Content -Path installer.ci.iss -Value $script -NoNewline -Encoding utf8NoBOM
           & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" installer.ci.iss
 
       - name: Upload artifact
@@ -111,18 +109,8 @@ jobs:
           path: build/installer/*.deb
 
   macos:
-    name: macOS disk image (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-13
-            arch: amd64
-            wails_platform: darwin/amd64
-          - runner: macos-14
-            arch: arm64
-            wails_platform: darwin/arm64
-    runs-on: ${{ matrix.runner }}
+    name: macOS disk image
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -146,7 +134,7 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Build application
-        run: wails build -clean -platform "${{ matrix.wails_platform }}" -trimpath
+        run: wails build -clean -platform darwin/amd64 -trimpath
 
       - name: Create disk image
         env:
@@ -158,12 +146,12 @@ jobs:
             -volname "Android Inspector ${version}" \
             -srcfolder build/bin/android_inspector.app \
             -ov -format UDZO \
-            "build/installer/AndroidInspector-${version}-${{ matrix.arch }}.dmg"
+            "build/installer/AndroidInspector-${version}.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg-${{ matrix.arch }}
+          name: macos-dmg
           path: build/installer/*.dmg
 
   publish:
