@@ -1,5 +1,11 @@
 #define MyAppName "Android Inspector"
-#define MyAppVersion "1.0.0"
+#ifndef APP_VERSION
+  #define APP_VERSION "0.1.0"
+#endif
+#define MyAppVersion APP_VERSION
+#ifndef APP_FILE_VERSION
+  #define APP_FILE_VERSION "0.1.0.0"
+#endif
 #define MyAppPublisher "Between Bytes Software"
 #define MyAppExeName "android_inspector.exe"
 #define ReleaseDir "build\bin"
@@ -46,8 +52,8 @@ WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
 
-VersionInfoVersion=1.0.0.1
-VersionInfoProductVersion=1.0.0.1
+VersionInfoVersion={#APP_FILE_VERSION}
+VersionInfoProductVersion={#APP_FILE_VERSION}
 VersionInfoProductName={#MyAppName}
 VersionInfoDescription={#MyAppName} Installer
 VersionInfoCompany={#MyAppPublisher}

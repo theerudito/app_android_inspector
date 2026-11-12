@@ -99,7 +99,7 @@ Build the Windows installer with Inno Setup:
 ISCC.exe installer.iss
 ```
 
-Output: `build\installer\AndroidInspector-Setup-1.0.0.exe`.
+Output: `build\installer\AndroidInspector-Setup-0.1.0.exe`.
 
 ### Linux
 
@@ -119,7 +119,7 @@ Review the generated package and install it:
 ```bash
 ls -lah build/installer/
 sudo apt -f install
-sudo dpkg -i "build/installer/android-inspector_1.0.0_amd64.deb"
+sudo dpkg -i "build/installer/android-inspector_0.1.0_amd64.deb"
 ```
 
 The package is written to `build/installer/`. If `dpkg` still reports missing dependencies, run `sudo apt -f install` again and repeat the installation command.
@@ -138,7 +138,14 @@ wails build
 
 Output: `build/bin/android_inspector.app`.
 
-To distribute the macOS application, archive or sign the generated `.app` bundle according to the target macOS version and architecture. This repository does not include a macOS installer package.
+To create a macOS disk image locally, run:
+
+```bash
+hdiutil create -volname "Android Inspector" -srcfolder build/bin/android_inspector.app \
+  -ov -format UDZO "build/installer/AndroidInspector-0.1.0.dmg"
+```
+
+Tagged releases are built automatically by GitHub Actions and attach Windows `.exe`, Linux `.deb`, and macOS `.dmg` files to the GitHub release.
 
 ## ADB runtime requirement
 
