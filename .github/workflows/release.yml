@@ -54,7 +54,11 @@ jobs:
         run: |
           $version = $env:APP_VERSION.TrimStart('v')
           $fileVersion = "$version.0"
-          & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" "/DAPP_VERSION=$version" "/DAPP_FILE_VERSION=$fileVersion" installer.iss
+          $script = Get-Content installer.iss -Raw
+          $script = $script.Replace('#define APP_VERSION "0.1.0"', "#define APP_VERSION `"$version`"")
+          $script = $script.Replace('#define APP_FILE_VERSION "0.1.0.0"', "#define APP_FILE_VERSION `"$fileVersion`"")
+          Set-Content -Path installer.ci.iss -Value $script -NoNewline -Encoding utf8
+          & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" installer.ci.iss
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
