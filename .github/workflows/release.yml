@@ -54,9 +54,9 @@ jobs:
         run: |
           $version = $env:APP_VERSION.TrimStart('v')
           $script = Get-Content installer.iss -Raw
-          $script = $script.Replace('#define MyAppVersion "0.1.0"', "#define MyAppVersion `"$version`"")
+          $script = $script.Replace('#define MyAppVersion "1.0.0"', "#define MyAppVersion `"$version`"")
           Set-Content -Path installer.ci.iss -Value $script -NoNewline -Encoding utf8NoBOM
-          & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" installer.ci.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.ci.iss
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

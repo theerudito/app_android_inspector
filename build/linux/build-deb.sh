@@ -4,7 +4,7 @@ set -eu
 
 APP_NAME="Android Inspector"
 PACKAGE_NAME="android-inspector"
-VERSION="${PACKAGE_VERSION:-0.1.0}"
+VERSION="${PACKAGE_VERSION:-1.0.0}"
 ARCH="amd64"
 
 PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
