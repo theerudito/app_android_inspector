@@ -24,6 +24,7 @@ import (
 )
 
 const commandTimeout = 15 * time.Second
+const installTimeout = 5 * time.Minute
 const maxTransferBytes = 64 << 20
 
 type Device struct {
@@ -65,10 +66,11 @@ type commandRunner func(context.Context, string, ...string) ([]byte, error)
 type commandInputRunner func(context.Context, io.Reader, string, ...string) ([]byte, error)
 
 type ADBClient struct {
-	run      commandRunner
-	runInput commandInputRunner
-	adbPath  string
-	adbErr   error
+	run        commandRunner
+	runInput   commandInputRunner
+	installRun commandRunner
+	adbPath    string
+	adbErr     error
 	// restart restarts the ADB server with mDNS discovery enabled.
 	// It defaults to restartADBServer and is a seam for tests.
 	restart func(context.Context, bool) error
@@ -76,7 +78,7 @@ type ADBClient struct {
 
 func NewADBClient() *ADBClient {
 	adbPath, err := resolveADBPath()
-	c := &ADBClient{run: runCommand, runInput: runCommandInput, adbPath: adbPath, adbErr: err}
+	c := &ADBClient{run: runCommand, runInput: runCommandInput, installRun: runInstallCommand, adbPath: adbPath, adbErr: err}
 	c.restart = c.restartADBServer
 	return c
 }
@@ -201,6 +203,60 @@ func (c *ADBClient) ListDevices(ctx context.Context) ([]Device, error) {
 		return nil, fmt.Errorf("list devices: %w", err)
 	}
 	return parseDevices(string(out)), nil
+}
+
+func validateAPK(filePath string) error {
+	if !filepath.IsAbs(filePath) || !strings.EqualFold(filepath.Ext(filePath), ".apk") {
+		return fmt.Errorf("choose an absolute .apk file path")
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("access APK: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("APK must be a regular file")
+	}
+	return nil
+}
+
+// InstallAPK installs an existing local APK without transferring its bytes through the webview.
+func (c *ADBClient) InstallAPK(ctx context.Context, serial, filePath string) error {
+	if serial == "" || !serialPattern.MatchString(serial) {
+		return fmt.Errorf("invalid device serial")
+	}
+	if err := validateAPK(filePath); err != nil {
+		return err
+	}
+	devices, err := c.ListDevices(ctx)
+	if err != nil {
+		return fmt.Errorf("check device before install: %w", err)
+	}
+	online := false
+	for _, device := range devices {
+		if device.Serial == serial && device.State == "device" {
+			online = true
+			break
+		}
+	}
+	if !online {
+		return fmt.Errorf("device %s is not online; refresh devices and retry", serial)
+	}
+	name, err := c.commandName()
+	if err != nil {
+		return err
+	}
+	run := c.installRun
+	if run == nil {
+		run = runInstallCommand
+	}
+	output, err := run(ctx, name, "-s", serial, "install", filePath)
+	if err != nil {
+		return fmt.Errorf("install APK on %s: %w", serial, err)
+	}
+	if !strings.Contains(string(output), "Success") || strings.Contains(string(output), "Failure") {
+		return fmt.Errorf("install APK on %s: %s", serial, strings.TrimSpace(string(output)))
+	}
+	return nil
 }
 
 func (c *ADBClient) ListDebugPackages(ctx context.Context, serial string) ([]DebugPackage, error) {
@@ -684,7 +740,15 @@ func runCommand(parent context.Context, name string, args ...string) ([]byte, er
 }
 
 func runCommandInput(parent context.Context, input io.Reader, name string, args ...string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(parent, commandTimeout)
+	return runCommandInputTimeout(parent, input, commandTimeout, name, args...)
+}
+
+func runInstallCommand(parent context.Context, name string, args ...string) ([]byte, error) {
+	return runCommandInputTimeout(parent, nil, installTimeout, name, args...)
+}
+
+func runCommandInputTimeout(parent context.Context, input io.Reader, timeout time.Duration, name string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	configureCommand(cmd)
@@ -695,7 +759,7 @@ func runCommandInput(parent context.Context, input io.Reader, name string, args 
 	cmd.Stdin = input
 	err := cmd.Run()
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("command timed out after %s", commandTimeout)
+		return nil, fmt.Errorf("command timed out after %s", timeout)
 	}
 	if stdout.exceeded {
 		return nil, fmt.Errorf("command output exceeds the %d MiB transfer limit", maxTransferBytes>>20)

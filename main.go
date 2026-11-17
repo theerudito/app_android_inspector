@@ -25,6 +25,7 @@ func main() {
 		MaxWidth:      1280,
 		MaxHeight:     760,
 		DisableResize: true,
+		DragAndDrop:   &options.DragAndDrop{EnableFileDrop: true, DisableWebViewDrop: true},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

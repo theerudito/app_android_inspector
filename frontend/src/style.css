@@ -7,9 +7,9 @@ button, input, select { font: inherit; }
 button { cursor: pointer; border: 0; transition: .15s ease; }
 button:disabled { cursor: not-allowed; opacity: .4; }
 .app-shell { width: 100%; height: 100%; min-width: 0; min-height: 0; display: flex; overflow: hidden; background: #0b111a; }
-.sidebar { width: 286px; min-height: 0; flex: none; padding: 27px 20px; background: #101923; border-right: 1px solid #253544; display: flex; flex-direction: column; gap: 20px; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
+.sidebar { width: 286px; min-height: 0; flex: none; padding: 16px 20px 12px; background: #101923; border-right: 1px solid #253544; display: flex; flex-direction: column; gap: 12px; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
 .sidebar::-webkit-scrollbar { display: none; }
-.brand { display: flex; align-items: center; gap: 11px; padding: 0 2px 20px; border-bottom: 1px solid #253544; }
+.brand { display: flex; align-items: center; gap: 11px; padding: 0 2px 12px; border-bottom: 1px solid #253544; }
 .brand > div:nth-child(2) { min-width: 0; flex: 1; }
 .wifi-qr-button { display: grid; place-items: center; width: 32px; height: 32px; flex: none; margin-left: auto; border: 1px solid #354858; border-radius: 8px; background: #192632; color: #b8f36b; }
 .wifi-qr-button:hover:not(:disabled) { border-color: #b8f36b; background: #1e2e38; }
@@ -17,9 +17,18 @@ button:disabled { cursor: not-allowed; opacity: .4; }
 .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: #b8f36b; color: #14200e; font-size: 13px; font-weight: 900; }
 .brand strong, .brand span, .device-card strong, .device-card span { display: block; }
 .brand strong { font-size: 13px; } .brand span { margin-top: 4px; color: #718094; font-size: 10px; }
-.sidebar-section { display: flex; flex-direction: column; gap: 12px; padding: 15px 12px 16px; border: 1px solid #263746; border-radius: 11px; background: #131f2a; box-shadow: 0 9px 20px #05090d1c; }
+.sidebar-section { display: flex; flex-direction: column; gap: 9px; padding: 12px; border: 1px solid #263746; border-radius: 11px; background: #131f2a; box-shadow: 0 9px 20px #05090d1c; }
 .package-section { margin-top: 1px; }
-.sidebar-footer { flex: none; margin-top: auto; padding-top: 14px; border-top: 1px solid #253544; color: #718094; font-size: 10px; text-align: center; }
+.apk-section { gap: 8px; }
+.apk-drop-target { min-height: 54px; border: 1px dashed #516779; border-radius: 8px; background: #101a24; }
+.apk-drop-target:hover { border-color: #b8f36b; }
+.apk-drop-target.apk-disabled { opacity: .5; border-color: #354858; }
+.apk-select { width: 100%; min-height: 52px; padding: 10px; background: transparent; color: #b8c4d0; font-size: 11px; line-height: 1.5; }
+.apk-selected { display: flex; align-items: center; gap: 5px; min-height: 52px; padding: 8px; }
+.apk-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e8eef7; font-size: 11px; }
+.apk-action { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 28px; height: 28px; padding: 0; border: 1px solid #354858; border-radius: 6px; background: #192632; color: #b8f36b; line-height: 1; }
+.apk-action.apk-remove { color: #ffd1c7; }
+.sidebar-footer { flex: none; margin-top: auto; padding-top: 9px; border-top: 1px solid #253544; color: #718094; font-size: 10px; text-align: center; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; color: #9eacbc; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .section-heading b { color: #a9e86a; font-size: 10px; letter-spacing: normal; text-transform: none; } .offline { color: #f2a56d !important; }
 .count { min-width: 22px; padding: 3px 6px; border-radius: 10px; background: #21303d; color: #a4b3c3; text-align: center; }
@@ -27,7 +36,7 @@ label { color: #a6b3c1; font-size: 11px; } select { width: 100%; margin-top: 7px
 .full { width: 100%; } .primary, .secondary, .download-button, .delete-button { padding: 9px 12px; border-radius: 7px; font-size: 11px; font-weight: 700; }
 .primary { background: #b8f36b; color: #14200e; } .secondary { border: 1px solid #354858; background: #192632; color: #c4d0dc; } .download-button { background: #314b3a; color: #d6ffb3; } .delete-button { background: #5a2e2d; color: #ffd1c7; }
 .toolbar-actions button { display: inline-flex; align-items: center; gap: 7px; } .toolbar-icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-.device-card { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 11px 10px; border-top: 1px solid #2a3b4a; color: #dce7f1; }
+.device-card { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border-top: 1px solid #2a3b4a; color: #dce7f1; }
 .device-icon { display: grid; place-items: center; width: 27px; height: 34px; border: 1px solid #607486; border-radius: 7px; color: #b8f36b; font-size: 21px; line-height: 1; }
 .device-card div { min-width: 0; flex: 1; } .device-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; } .device-card span { margin-top: 3px; overflow: hidden; color: #8090a2; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .device-card i, .header-status i { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #596777; } i.online { background: #b8f36b; box-shadow: 0 0 0 3px #b8f36b1c; }

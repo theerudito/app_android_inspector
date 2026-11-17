@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, ClipboardEvent, KeyboardEvent } from "react";
+import type { ChangeEvent, ClipboardEvent, CSSProperties, KeyboardEvent } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   Delete,
-  DetectADB,
+  ChooseAPK,
+  InstallAPK,
   ListDebugPackages,
   ListDevices,
   ListPackageDirectory,
@@ -12,11 +13,13 @@ import {
   PairAndConnect,
   PreviewFile,
   SaveFile,
+  SelectAPK,
   StartWifiPairing,
   StopWifiPairing,
   UploadFile,
   WifiPairingStatus,
 } from "../wailsjs/go/main/App";
+import { OnFileDrop, OnFileDropOff } from "../wailsjs/runtime/runtime";
 import type { main } from "../wailsjs/go/models";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -132,9 +135,14 @@ function PdfPreview({
 }
 
 function App() {
-  const [adbVersion, setAdbVersion] = useState("Checking ADB");
+  const [adbReady, setAdbReady] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [serial, setSerial] = useState("");
+  const [apkPath, setApkPath] = useState("");
+  const [apkBusy, setApkBusy] = useState(false);
+  const apkBusyRef = useRef(false);
+  const apkSelection = useRef(0);
+  const [apkFeedback, setApkFeedback] = useState<{ kind: "error" | "success"; message: string } | null>(null);
   const [packages, setPackages] = useState<DebugPackage[]>([]);
   const [packageName, setPackageName] = useState("");
   const [directory, setDirectory] = useState(".");
@@ -177,6 +185,70 @@ function App() {
     () => devices.find((item) => item.serial === serial),
     [devices, serial],
   );
+  const apkEnabled = adbReady && selectedDevice?.state === "device" && !busy;
+  useEffect(() => {
+    OnFileDrop((_x, _y, paths) => {
+      if (!apkEnabled || apkBusyRef.current) return;
+      if (paths.length !== 1) {
+        setApkFeedback({ kind: "error", message: "Drop one APK at a time." });
+        return;
+      }
+      const request = ++apkSelection.current;
+      SelectAPK(paths[0])
+        .then((path) => {
+          if (apkBusyRef.current || request !== apkSelection.current) return;
+          setApkPath(path);
+          setApkFeedback(null);
+        })
+        .catch((error) => {
+          if (request === apkSelection.current && !apkBusyRef.current)
+            setApkFeedback({ kind: "error", message: String(error) });
+        });
+    }, true);
+    return () => {
+      ++apkSelection.current;
+      OnFileDropOff();
+    };
+  }, [apkEnabled]);
+  useEffect(() => {
+    if (!apkFeedback) return;
+    const timer = window.setTimeout(() => setApkFeedback(null), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [apkFeedback]);
+  async function chooseAPK() {
+    if (!apkEnabled || apkBusyRef.current) return;
+    const request = ++apkSelection.current;
+    try {
+      const path = await ChooseAPK();
+      if (path && !apkBusyRef.current && request === apkSelection.current) {
+        setApkPath(path);
+        setApkFeedback(null);
+      }
+    } catch (error) {
+      if (request === apkSelection.current && !apkBusyRef.current)
+        setApkFeedback({ kind: "error", message: String(error) });
+    }
+  }
+  async function installAPK() {
+    if (!apkPath || !apkEnabled || !selectedDevice || apkBusyRef.current) return;
+    const target = selectedDevice.serial;
+    const path = apkPath;
+    ++apkSelection.current;
+    apkBusyRef.current = true;
+    setApkBusy(true);
+    setApkFeedback(null);
+    try {
+      await InstallAPK(target, path);
+      ++apkSelection.current;
+      setApkPath("");
+      setApkFeedback({ kind: "success", message: `Installed on ${target}.` });
+    } catch (error) {
+      setApkFeedback({ kind: "error", message: String(error) });
+    } finally {
+      apkBusyRef.current = false;
+      setApkBusy(false);
+    }
+  }
   const root = `/data/data/${packageName}`;
   const currentPath = directory === "." ? root : `${root}/${directory}`;
   useEffect(
@@ -186,9 +258,6 @@ function App() {
     [mediaURL],
   );
   useEffect(() => {
-    DetectADB()
-      .then(setAdbVersion)
-      .catch(() => setAdbVersion("ADB unavailable"));
     refreshDevices();
   }, []);
   useEffect(() => {
@@ -401,12 +470,14 @@ function App() {
     setError("");
     try {
       const found = await ListDevices();
+      setAdbReady(true);
       setDevices(found);
       setSerial((old) =>
         found.some((d) => d.serial === old) ? old : (found[0]?.serial ?? ""),
       );
       return found;
     } catch (e) {
+      setAdbReady(false);
       setError(String(e));
       return [];
     } finally {
@@ -585,7 +656,6 @@ function App() {
       setBusy("");
     }
   }
-  const adbReady = adbVersion !== "ADB unavailable";
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -614,7 +684,7 @@ function App() {
           </div>
           <label>
             Device
-            <select value={serial} onChange={(e) => setSerial(e.target.value)}>
+            <select value={serial} onChange={(e) => setSerial(e.target.value)} disabled={apkBusy}>
               <option value="">Select a device</option>
               {devices.map((d) => (
                 <option key={d.serial} value={d.serial}>
@@ -627,7 +697,7 @@ function App() {
           <button
             className="secondary full"
             onClick={refreshDevices}
-            disabled={!!busy}
+            disabled={!!busy || apkBusy}
           >
             {busy === "devices" ? "Refreshing..." : "Refresh devices"}
           </button>
@@ -678,6 +748,27 @@ function App() {
           </button>
           {busy === "packages" && <Progress label="Checking run-as access" />}
           {packagesError && <p className="error-text">{packagesError}</p>}
+        </div>
+        <div className="sidebar-section apk-section">
+          <div className="section-heading"><span>Install APK</span></div>
+          <div className={`apk-drop-target${!apkEnabled && !apkPath ? " apk-disabled" : ""}`}
+            style={apkEnabled ? ({ "--wails-drop-target": "drop" } as CSSProperties) : undefined}>
+            {apkPath ? (
+              <div className="apk-selected">
+                <span className="apk-name" title={apkPath}>{apkPath.split(/[\\/]/).pop()}</span>
+                <button type="button" className="apk-action apk-remove" title="Remove APK" aria-label="Remove APK"
+                  disabled={apkBusy} onClick={() => { ++apkSelection.current; setApkPath(""); setApkFeedback(null); }}><ToolbarIcon type="delete" /></button>
+                <button type="button" className="apk-action" title="Install APK" aria-label="Install APK"
+                  disabled={apkBusy || !apkEnabled} onClick={installAPK}><ToolbarIcon type="upload" /></button>
+              </div>
+            ) : (
+              <button type="button" className="apk-select" onClick={chooseAPK} disabled={apkBusy || !apkEnabled}>
+                Drop an .apk here or click to select
+              </button>
+            )}
+          </div>
+          {apkBusy && <Progress label="Installing APK on device…" />}
+          {apkFeedback && <p role="status" className={apkFeedback.kind === "error" ? "error-text" : "notice-text"}>{apkFeedback.message}</p>}
         </div>
         <footer className="sidebar-footer">
           Made by Between Bytes Software {new Date().getFullYear()}

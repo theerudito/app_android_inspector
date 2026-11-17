@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -49,6 +50,33 @@ func (a *App) DetectADB() (string, error) {
 // ListDevices returns devices currently visible to adb.
 func (a *App) ListDevices() ([]Device, error) {
 	return a.client.ListDevices(a.ctx)
+}
+
+// ChooseAPK opens a native file dialog; cancellation leaves the current selection unchanged.
+func (a *App) ChooseAPK() (string, error) {
+	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "Select APK",
+		Filters: []runtime.FileFilter{{DisplayName: "Android packages (*.apk)", Pattern: "*.apk"}},
+	})
+	if err != nil {
+		return "", fmt.Errorf("choose APK: %w", err)
+	}
+	if filePath == "" {
+		return "", nil
+	}
+	return a.SelectAPK(filePath)
+}
+
+// SelectAPK validates a native dropped path before presenting it to the user.
+func (a *App) SelectAPK(filePath string) (string, error) {
+	if err := validateAPK(filePath); err != nil {
+		return "", err
+	}
+	return filepath.Clean(filePath), nil
+}
+
+func (a *App) InstallAPK(serial, filePath string) error {
+	return a.client.InstallAPK(a.ctx, serial, filePath)
 }
 
 // ListDebugPackages returns third-party packages accessible through run-as.
